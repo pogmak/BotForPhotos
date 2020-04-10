@@ -29,8 +29,8 @@ texts_like=['Ржака нах!','Ржака ебать!','Нормальный 
 
 
 def start(update, context):
-    chat_id = update.effective_chat.id    
-    if not chat_id in users:    
+    chat_id = update.effective_chat.id
+    if not chat_id in users:
         users.append(chat_id)
         VK.adduserstodb(chat_id)
         logging.info('Add new user:', str(chat_id))
@@ -53,7 +53,7 @@ def like(update, context):
     likes[id] += 1
     VK.updateLikes(id, likes[id])
     context.bot.send_message(chat_id=chat_id,text=str(likes[id])+emoji.emojize(':thumbs_up:'))
-    logging.info('User %s liked photo with id %s' % (chat_id, id))    
+    logging.info('User %s liked photo with id %s' % (chat_id, id))
 
 
 def send_lastph(update, context):
@@ -108,22 +108,23 @@ if __name__ == '__main__':
     if rows:
         for row in rows:
             likes[row[0]] = row[2]
-            urls.append((row[0],row[1])) 
+            urls.append((row[0],row[1]))
     else:
         logging.info('Database is empty. Dont read.')
     logging.info('Loading users form database')
     users = VK.loadUsersfromdb()
     logging.info('Clear database and load new data')
     VK.createIntoDB()
-    if not rows:  
+    if not rows:
         for row in VK.loadfromdb():
             likes[row[0]] = row[2]
-            urls.append((row[0],row[1])) 
+            urls.append((row[0],row[1]))
+            logging.info('Because this table is new, load data...')
 
     logging.info('Database succesefull load')
     updater = Updater(TOKEN, use_context=True)
     job = updater.job_queue
-    job.run_repeating(callback=newSavedUpdater,interval=10)
+    job.run_repeating(callback=newSavedUpdater,interval=60)
 
     dispatcher = updater.dispatcher
 
