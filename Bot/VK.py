@@ -37,11 +37,12 @@ def loadfromdb():
     result = []
     with psycopg2.connect(dbname=dbname, user=dbuser, password=dbpassword, host="127.0.0.1", port="5432") as conn:
         with conn.cursor() as cursor:
-            query_get = "SELECT photo_id, url, likes_count FROM likes;"
+            query_get = "SELECT photo_id, url, likes_count FROM likes ORDER BY id;"
             cursor.execute(query_get)
             for row in cursor.fetchall():
                 result.append(row)
     return result
+
 
 def loadUsersfromdb():
     result = []
@@ -54,8 +55,9 @@ def loadUsersfromdb():
     return result
 
 
-def createIntoDB():
+def SyncDB():
     photos = []
+    ids = []
     for j in range(math.ceil(vk.photos.get(album_id='saved')['count'] / 1000)):
         photos.append(vk.photos.get(album_id='saved', offset=j * 1000, rev=0, count=1000))
     with psycopg2.connect(dbname=dbname, user=dbuser, password=dbpassword, host="127.0.0.1", port="5432") as conn:
@@ -63,71 +65,34 @@ def createIntoDB():
             for saved_photos in photos:
                 for items in saved_photos['items']:
                     id = items['id']
+                    ids.append(id)
                     url = items['sizes'][-1]['url']
                     #First, check VK id in database, if not exist - add
-                    query_find = "SELECT * FROM likes WHERE id={}".format(id)
+                    query_find = "SELECT * FROM likes WHERE photo_id={};".format(id)
                     cursor.execute(query_find)
                     if not cursor.fetchall():
                         query_create = "INSERT INTO likes (photo_id,url,likes_count) VALUES ({},'{}',0);".format(id,url)
                         cursor.execute(query_create)
                         logger.info("Photo with id={} is not in database, insert...".format(id))
-                query_count = "SELECT COUNT(*) FROM likes;"
-                cursor.execute(query_count)
-                count = cursor.fetchall()[0][0]
-                for i in range(0,int(count)):
-                    query_find = "SELECT photo_id FROM likes WHERE id={}".format(count)
-                    cursor.execute(query_find)
-                    ids = [id for id in items['id']]
-                    id = cursor.fetchall()[0[0]]
-                    if not id in ids:
-                        query_delete = "DELETE FROM likes WHERE id={}".format(id)
-                        cursor.execute(query_delete)
-                        logger.info("Photo with id={} in database, but not in VK".format(id))
-
-
-def getByIndex(index):
-    with psycopg2.connect(dbname=dbname, user=dbuser, password=dbpassword, host="127.0.0.1", port="5432") as conn:
-        with conn.cursor() as cursor:
             query_count = "SELECT COUNT(*) FROM likes;"
             cursor.execute(query_count)
             count = cursor.fetchall()[0][0]
-            query_find = "SELECT url,photo_id FROM likes WHERE id={};".format(count-index)
-            cursor.execute(query_find)
-            i = cursor.fetchall()
-            return i[0][0], i[0][1]
-    return None
+            for i in range(0,count):
+                query_find = "SELECT photo_id FROM likes WHERE id={};".format(i)
+                cursor.execute(query_find)
+                id = cursor.fetchall()[0][0]
+                if not id in ids:
+                    query_delete = "DELETE FROM likes WHERE photo_id={};".format(id)
+                    cursor.execute(query_delete)
+                    logger.info("Photo with id={} in database, but not in VK, deleted...".format(id))
 
 
-def getRandom():
-    query_count = "SELECT COUNT(*) FROM likes;"
-    with psycopg2.connect(dbname=dbname, user=dbuser, password=dbpassword, host="127.0.0.1", port="5432") as conn:
-        with conn.cursor() as cursor:
-            cursor.execute(query_count)
-            count = cursor.fetchall()[0][0]
-            random_id = random.randint(1,count)
-            query_find = "SELECT url,photo_id FROM likes WHERE id={};".format(random_id)
-            cursor.execute(query_find)
-            i = cursor.fetchall()
-            return i[0][0], i[0][1]
-    return None
 
 def updateLikes(photo_id,likes):
     query_update = "UPDATE likes SET likes_count={} WHERE photo_id={};".format(likes,photo_id)
     with psycopg2.connect(dbname=dbname, user=dbuser, password=dbpassword, host="127.0.0.1", port="5432") as conn:
         with conn.cursor() as cursor:
             cursor.execute(query_update)
-            return True
-
-
-def getCurrentLikes():
-    likes = {}
-    query_find = "SELECT photo_id,likes_count FROM likes;"
-    with psycopg2.connect(dbname=dbname, user=dbuser, password=dbpassword, host="127.0.0.1", port="5432") as conn:
-        with conn.cursor() as cursor:
-            cursor.execute(query_find)
-            for i in cursor.fetchall():
-                likes[i[0]] = i[1]
-            return likes
 
 
 def adduserstodb(chatid):
