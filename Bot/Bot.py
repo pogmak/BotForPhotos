@@ -116,7 +116,7 @@ def send_toall(update, context):
     message = ' '.join(context.args)
     for user in users:
         context.bot.send_message(user, text=emoji.emojize(message, use_aliases=True))
-        logger.info('Message to all has been sent')
+    logger.info('Message to all has been sent')
 
 
 
