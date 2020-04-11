@@ -1,17 +1,27 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler, JobQueue
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, error, message
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
 import logging
 import VK
 import emoji
 import random
-import time
+import os
 
-from datetime import datetime
+errorlog = os.path.join('LOG.txt')
 
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                     level=logging.INFO)
+logger = logging.getLogger('BOT')
+logger.setLevel(logging.DEBUG)
+ch = logging.StreamHandler()
+eh = logging.FileHandler(errorlog)
+ch.setLevel(logging.DEBUG)
+eh.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(funcName)s - %(levelname)s - %(message)s')
+eh.setFormatter(formatter)
+ch.setFormatter(formatter)
+
+logger.addHandler(eh)
+logger.addHandler(ch)
 
 TOKEN='1113990897:AAFCbjSkaHIlUgZY8itWm42hErADkpo8dwo'
 #REQUEST_KWARGS={
@@ -25,7 +35,7 @@ lastest = {}
 likes = {}
 urls = []
 users = []
-texts_like=['Ржака нах!','Ржака ебать!','Нормальный хуй!']
+texts_like=['Ржака нах!','Ржака ебать!','Нормальный хуй!', 'Ору!']
 
 
 def start(update, context):
@@ -33,7 +43,7 @@ def start(update, context):
     if not chat_id in users:
         users.append(chat_id)
         VK.adduserstodb(chat_id)
-        logging.info('Add new user:', str(chat_id))
+        logger.info('Add new user:', str(chat_id))
 
     lastest[chat_id] = -1
     menu = ReplyKeyboardMarkup.from_row(buttons)
@@ -53,7 +63,7 @@ def like(update, context):
     likes[id] += 1
     VK.updateLikes(id, likes[id])
     context.bot.send_message(chat_id=chat_id,text=str(likes[id])+emoji.emojize(':thumbs_up:'))
-    logging.info('User %s liked photo with id %s' % (chat_id, id))
+    logger.info('User %s liked photo with id %s' % (chat_id, id))
 
 
 def send_lastph(update, context):
@@ -76,7 +86,6 @@ def send_randph(update, context):
     likes_button = InlineKeyboardMarkup([[InlineKeyboardButton(random.choice(texts_like) + emoji.emojize(':thumbs_up:'), callback_data=id)]])
     context.bot.send_photo(chat_id=chat_id, photo=url,reply_markup=likes_button)
 
-
 def HandlerButtons(update, context):
     chat_id = update.effective_chat.id
     if update.message.text == buttons[0]:
@@ -98,10 +107,10 @@ def newSavedUpdater(context):
                              text='Новая сохраненка' + emoji.emojize(':fire::fire::fire:', use_aliases=True))
             context.bot.send_photo(user, photo=url, reply_markup=likes_button)
         VK.addPhotoToDB(id,url)
-        logging.info('New photo with id %i has been sent to all users' % id)
+        logger.info('New photo with id %i has been sent to all users' % id)
 
 if __name__ == '__main__':
-    logging.info('Loading likes and urls from current database')
+    logger.info('Loading likes and urls from current database')
 
     #Return rows from database (photo_id, url, likes_count)
     rows = VK.loadfromdb()
@@ -110,18 +119,18 @@ if __name__ == '__main__':
             likes[row[0]] = row[2]
             urls.append((row[0],row[1]))
     else:
-        logging.info('Database is empty. Dont read.')
-    logging.info('Loading users form database')
+        logger.info('Database is empty. Dont read.')
+    logger.info('Loading users form database')
     users = VK.loadUsersfromdb()
-    logging.info('Clear database and load new data')
+    logger.info('Clear database and load new data')
     VK.createIntoDB()
     if not rows:
         for row in VK.loadfromdb():
             likes[row[0]] = row[2]
             urls.append((row[0],row[1]))
-            logging.info('Because this table is new, load data...')
+            logger.info('Because this table is new, load data...')
 
-    logging.info('Database succesefull load')
+    logger.info('Database succesefull load')
     updater = Updater(TOKEN, use_context=True)
     job = updater.job_queue
     job.run_repeating(callback=newSavedUpdater,interval=60)
