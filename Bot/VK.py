@@ -80,7 +80,7 @@ def SyncDB():
             for i in range(0,count):
                 query_find = "SELECT photo_id FROM likes WHERE id={};".format(i)
                 cursor.execute(query_find)
-                if not cursor.fetchall():
+                if cursor.fetchall():
                     id = cursor.fetchall()[0][0]
                     if not id in ids:
                         query_delete = "DELETE FROM likes WHERE photo_id={};".format(id)
