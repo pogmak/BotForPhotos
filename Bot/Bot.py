@@ -104,10 +104,19 @@ def newSavedUpdater(context):
         [[InlineKeyboardButton(random.choice(texts_like) + emoji.emojize(':thumbs_up:'), callback_data=id)]])
         for user in users:
             context.bot.send_message(user,
-                             text='Новая сохраненка' + emoji.emojize(':fire::fire::fire:', use_aliases=True))
+                             text=emoji.emojize('Новая сохраненка :fire::fire::fire:', use_aliases=True))
             context.bot.send_photo(user, photo=url, reply_markup=likes_button)
         VK.addPhotoToDB(id,url)
         logger.info('New photo with id %i has been sent to all users' % id)
+
+
+def send_toall(update, context):
+    message = ' '.join(context.args)
+    for user in users:
+        context.bot.send_message(user, text=emoji.emojize(message, use_aliases=True))
+        logger.info('Всем отправлено сообщение:%s' % message)
+
+
 
 if __name__ == '__main__':
     logger.info('Loading likes and urls from current database')
@@ -138,8 +147,9 @@ if __name__ == '__main__':
     dispatcher = updater.dispatcher
 
     dispatcher.add_handler(CommandHandler('start', start))
+    dispatcher.add_handler(CommandHandler('secrettoall', send_toall))
     dispatcher.add_handler(MessageHandler(Filters.text(buttons), HandlerButtons))
     dispatcher.add_handler(CallbackQueryHandler(like))
 
-    updater.start_polling(timeout=30, read_latency=10)
+    updater.start_polling(timeout=123)
 
