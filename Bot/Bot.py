@@ -5,7 +5,7 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Callb
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, Bot
 import logging
 import VK
-import emoji
+from emoji import emojize
 import random
 import os
 
@@ -24,7 +24,9 @@ ch.setFormatter(formatter)
 logger.addHandler(eh)
 logger.addHandler(ch)
 
+vk_id = '255798202'
 TOKEN='1113990897:AAFCbjSkaHIlUgZY8itWm42hErADkpo8dwo'
+
 #REQUEST_KWARGS={
 #    'proxy_url': 'socks5://96.96.33.133:1080',
 #}
@@ -37,6 +39,15 @@ likes = []
 urls = []
 users = []
 texts_like=['Ржака нах!','Ржака ебать!','Нормальный хуй!', 'Ору!']
+
+
+def GetLikeButton(photo_id):
+    vk_url = 'https://vk.com/photo%s_%s' % (vk_id,photo_id)
+    layout = [
+        [InlineKeyboardButton(random.choice(texts_like) + emojize(':thumbs_up:'), callback_data=photo_id),
+         InlineKeyboardButton(text='VK',url=vk_url)]
+    ]
+    return layout
 
 
 class MQBot(Bot):
@@ -61,7 +72,7 @@ class MQBot(Bot):
 def start(update, context):
     chat_id = update.effective_chat.id
     if not chat_id in users:
-        welcome_text = "Приветствуем нового сюсюкена:" + update.effective_chat.username + emoji.emojize(':green_heart:')
+        welcome_text = "Приветствуем нового сюсюкена:" + update.effective_chat.username + emojize(':green_heart:')
         for user in users:
             context.bot.send_message(chat_id=user, text=welcome_text)
         users.append(chat_id)
@@ -86,7 +97,7 @@ def like(update, context):
         if int(l[0]) == id:
             l[1] += 1
             VK.updateLikes(id, l[1])
-            context.bot.send_message(chat_id=chat_id, text=str(l[1]) + emoji.emojize(':thumbs_up:'))
+            context.bot.send_message(chat_id=chat_id, text=str(l[1]) + emojize(':thumbs_up:'))
             break
     logger.info('User %s liked photo with id %s' % (chat_id, id))
 
@@ -97,7 +108,7 @@ def send_lastph(update, context):
         lastest[chat_id] = -1
     url = urls[lastest[chat_id]][1]
     id = urls[lastest[chat_id]][0]
-    likes_button = InlineKeyboardMarkup([[InlineKeyboardButton(random.choice(texts_like)+emoji.emojize(':thumbs_up:'), callback_data=id)]])
+    likes_button = InlineKeyboardMarkup(GetLikeButton(id))
     context.bot.send_photo(chat_id=chat_id, photo=url,reply_markup=likes_button)
     lastest[chat_id] -= 1
 
@@ -107,7 +118,7 @@ def send_randph(update, context):
     index = random.randint(0,len(urls))
     id = urls[index][0]
     url = urls[index][1]
-    likes_button = InlineKeyboardMarkup([[InlineKeyboardButton(random.choice(texts_like) + emoji.emojize(':thumbs_up:'), callback_data=id)]])
+    likes_button = InlineKeyboardMarkup(GetLikeButton(id))
     context.bot.send_photo(chat_id=chat_id, photo=url,reply_markup=likes_button)
 
 
@@ -125,11 +136,9 @@ def newSavedUpdater(context):
     if not id in ids:
         likes.append([id,0])
         urls.append((id,url))
-        likes_button = InlineKeyboardMarkup(
-        [[InlineKeyboardButton(random.choice(texts_like) + emoji.emojize(':thumbs_up:'), callback_data=id)]])
+        likes_button = InlineKeyboardMarkup(GetLikeButton(id))
         for user in users:
-            context.bot.send_message(user,
-                             text='Новая сохраненка' + emoji.emojize(':fire::fire::fire:', use_aliases=True))
+            context.bot.send_message(user,text='Новая сохраненка %s' % emojize(':fire::fire::fire:', use_aliases=True))
             context.bot.send_photo(user, photo=url, reply_markup=likes_button)
         VK.addPhotoToDB(id,url)
         logger.info('New photo with id %i has been sent to all users' % id)
@@ -138,7 +147,7 @@ def newSavedUpdater(context):
 def send_toall(update, context):
     message = ' '.join(context.args)
     for user in users:
-        context.bot.send_message(user, text=emoji.emojize(message, use_aliases=True))
+        context.bot.send_message(user, text=emojize(message, use_aliases=True))
     logger.info('Message to all has been sent')
 
 
