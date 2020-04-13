@@ -35,10 +35,10 @@ TOKEN='1113990897:AAFCbjSkaHIlUgZY8itWm42hErADkpo8dwo'
 buttons = ['Случайно','Листать последние']
 
 lastest = {}
-likes = []
+likes = {}
 urls = []
-users = []
-texts_like=['Ржака нах!','Ржака ебать!','Нормальный\nхуй!', 'Ору!']
+users = {}
+texts_like=['Ржака нах!','Ржака ебать!','Нормальный хуй!', 'Ору!']
 
 
 def GetLikeButton(photo_id):
@@ -47,7 +47,17 @@ def GetLikeButton(photo_id):
         [InlineKeyboardButton(random.choice(texts_like) + emojize(':thumbs_up:'), callback_data=photo_id),
          InlineKeyboardButton(text='VK',url=vk_url)]
     ]
-    return layout
+    return InlineKeyboardMarkup(layout)
+
+
+def GetAnotherButtons(photo_id):
+    vk_url = 'https://vk.com/photo%s_%s' % (vk_id,photo_id)
+    callback = 'who|%s' % photo_id
+    layout = [
+        [InlineKeyboardButton(text=str(len(likes[photo_id])) + emojize(':thumbs_up:'),callback_data=callback),
+         InlineKeyboardButton(text='VK',url=vk_url)]
+    ]
+    return InlineKeyboardMarkup(layout)
 
 
 class MQBot(Bot):
@@ -71,13 +81,14 @@ class MQBot(Bot):
 
 def start(update, context):
     chat_id = update.effective_chat.id
-    if not chat_id in users:
-        welcome_text = "Приветствуем нового сюсюкена:" + update.effective_chat.username + emojize(':green_heart:')
-        for user in users:
+    if not chat_id in list(users.keys()):
+        username = update.effective_chat.username
+        welcome_text = "Приветствуем нового сюсюкена:" + username + emojize(':green_heart:')
+        for user in list(users.keys()):
             context.bot.send_message(chat_id=user, text=welcome_text)
-        users.append(chat_id)
-        VK.adduserstodb(chat_id)
-        logger.info('Add new user:%s' % chat_id)
+        users[chat_id] = username
+        VK.adduserstodb(chat_id,username)
+        logger.info('Add new user:%s %s' % (chat_id,username))
     lastest[chat_id] = -1
     menu = ReplyKeyboardMarkup.from_row(buttons)
     wait_job = context.job_queue.run_repeating(newSavedUpdater,10,context=chat_id)
@@ -90,20 +101,17 @@ def like(update, context):
     global likes
     chat_id = update.effective_chat.id
     query = update.callback_query
-    if query.data == 'wholikes':
-        query.answer(text='In developing...', show_alert=True)
+    data = query.data
+    if data.split('|')[0] == 'who':
+        id = int(data.split('|')[1])
+        message = "WHO LIKES:\n"+'\n'.join(users[x] for x in likes[id])
+        query.answer(text=message, show_alert=True)
     else:
         query.answer()
-        id = int(query.data)
-        for l in likes:
-            if int(l[0]) == id:
-                l[1] += 1
-                VK.updateLikes(id, l[1])
-                layout = GetLikeButton(id)
-                layout[0][0] = InlineKeyboardButton(text=str(l[1]) + emojize(':thumbs_up:'),callback_data='wholikes')
-                markup = InlineKeyboardMarkup(layout)
-                query.edit_message_reply_markup(reply_markup=markup)
-                break
+        id = int(data)
+        likes[id].append(chat_id)
+        VK.updateLikes(id, chat_id)
+        query.edit_message_reply_markup(reply_markup=GetAnotherButtons(id))
         logger.info('User %s liked photo with id %s' % (chat_id, id))
 
 
@@ -113,8 +121,11 @@ def send_lastph(update, context):
         lastest[chat_id] = -1
     url = urls[lastest[chat_id]][1]
     id = urls[lastest[chat_id]][0]
-    likes_button = InlineKeyboardMarkup(GetLikeButton(id))
-    context.bot.send_photo(chat_id=chat_id, photo=url,reply_markup=likes_button)
+    if chat_id in likes[id]:
+        button = GetAnotherButtons(id)
+    else:
+        button = GetLikeButton(id)
+    context.bot.send_photo(chat_id=chat_id, photo=url,reply_markup=button)
     lastest[chat_id] -= 1
 
 
@@ -123,8 +134,11 @@ def send_randph(update, context):
     index = random.randint(0,len(urls))
     id = urls[index][0]
     url = urls[index][1]
-    likes_button = InlineKeyboardMarkup(GetLikeButton(id))
-    context.bot.send_photo(chat_id=chat_id, photo=url,reply_markup=likes_button)
+    if chat_id in likes[id]:
+        button = GetAnotherButtons(id)
+    else:
+        button = GetLikeButton(id)
+    context.bot.send_photo(chat_id=chat_id, photo=url,reply_markup=button)
 
 
 def HandlerButtons(update, context):
@@ -139,10 +153,10 @@ def newSavedUpdater(context):
     url, id = VK.checkLast()
     ids = [x[0] for x in urls]
     if not id in ids:
-        likes.append([id,0])
+        likes[id] = []
         urls.append((id,url))
         likes_button = InlineKeyboardMarkup(GetLikeButton(id))
-        for user in users:
+        for user in list(users.keys()):
             context.bot.send_message(user,text='Новая сохраненка %s' % emojize(':fire::fire::fire:', use_aliases=True))
             context.bot.send_photo(user, photo=url, reply_markup=likes_button)
         VK.addPhotoToDB(id,url)
@@ -151,28 +165,35 @@ def newSavedUpdater(context):
 
 def send_toall(update, context):
     message = ' '.join(context.args)
-    for user in users:
+    for user in list(users.keys()):
         context.bot.send_message(user, text=emojize(message, use_aliases=True))
     logger.info('Message to all has been sent')
 
 
 
 if __name__ == '__main__':
+    bot = MQBot(token=TOKEN)
     logger.info('Synchronize database with VK. Add new photo and delete deleted')
     VK.SyncDB()
     #Return rows from database (photo_id, url, likes_count)
     rows = VK.loadfromdb()
     for row in rows:
-        likes.append([row[0],row[2]])
+        if row[2] == None:
+            likes[row[0]] = []
+        else:
+            likes[row[0]] = row[2]
         urls.append((row[0],row[1]))
-    #Переворачиваем, потому как фотографии с конца будет быстрее искать
-    likes.reverse()
 
     logger.info('Loading users form database')
-    users = VK.loadUsersfromdb()
+    rows = VK.loadUsersfromdb()
+    for row in rows:
+        if row[1]:
+            users[int(row[0])] = row[1]
+        else:
+            users[int(row[0])] = bot.get_chat(row[0]).username
+
     logger.info('Database succesefull load')
 
-    bot = MQBot(token=TOKEN)
     updater = Updater(bot=bot, use_context=True)
     job = updater.job_queue
     job.run_repeating(callback=newSavedUpdater,interval=60)

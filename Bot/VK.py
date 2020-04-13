@@ -37,7 +37,7 @@ def loadfromdb():
     result = []
     with psycopg2.connect(dbname=dbname, user=dbuser, password=dbpassword, host="127.0.0.1", port="5432") as conn:
         with conn.cursor() as cursor:
-            query_get = "SELECT photo_id, url, likes_count FROM likes ORDER BY id;"
+            query_get = "SELECT photo_id, url, wholikes FROM likes ORDER BY id;"
             cursor.execute(query_get)
             for row in cursor.fetchall():
                 result.append(row)
@@ -48,10 +48,10 @@ def loadUsersfromdb():
     result = []
     with psycopg2.connect(dbname=dbname, user=dbuser, password=dbpassword, host="127.0.0.1", port="5432") as conn:
         with conn.cursor() as cursor:
-            query_get = "SELECT chatid FROM users;"
+            query_get = "SELECT chatid,username FROM users;"
             cursor.execute(query_get)
             for row in cursor.fetchall():
-                result.append(int(row[0]))
+                result.append(row)
     return result
 
 
@@ -71,7 +71,7 @@ def SyncDB():
                     query_find = "SELECT * FROM likes WHERE photo_id={};".format(id)
                     cursor.execute(query_find)
                     if not cursor.fetchall():
-                        query_create = "INSERT INTO likes (photo_id,url,likes_count) VALUES ({},'{}',0);".format(id,url)
+                        query_create = "INSERT INTO likes (photo_id,url) VALUES ({},'{}');".format(id,url)
                         cursor.execute(query_create)
                         logger.info("Photo with id={} is not in database, insert...".format(id))
             query_count = "SELECT COUNT(*) FROM likes;"
@@ -90,26 +90,26 @@ def SyncDB():
 
 
 
-def updateLikes(photo_id,likes):
-    query_update = "UPDATE likes SET likes_count={} WHERE photo_id={};".format(likes,photo_id)
+def updateLikes(photo_id,chatid):
+    query_update = "UPDATE likes SET wholikes=array_append(wholikes,{}) WHERE photo_id={};".format(chatid,photo_id)
     with psycopg2.connect(dbname=dbname, user=dbuser, password=dbpassword, host="127.0.0.1", port="5432") as conn:
         with conn.cursor() as cursor:
             cursor.execute(query_update)
 
 
-def adduserstodb(chatid):
+def adduserstodb(chatid,username):
     with psycopg2.connect(dbname=dbname, user=dbuser, password=dbpassword, host="127.0.0.1", port="5432") as conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT * FROM users WHERE chatid='{}';".format(chatid))
             if not cursor.fetchall():
-            	query_insert = "INSERT INTO users (chatid) VALUES ({});".format(chatid)
+            	query_insert = "INSERT INTO users (chatid,username) VALUES ({},{});".format(chatid,username)
             	cursor.execute(query_insert)
 
 
 def addPhotoToDB(id, url):
     with psycopg2.connect(dbname=dbname, user=dbuser, password=dbpassword, host="127.0.0.1", port="5432") as conn:
         with conn.cursor() as cursor:
-            cursor.execute("INSERT INTO likes (photo_id,url,likes_count) VALUES ({},'{}',0);".format(id,url))
+            cursor.execute("INSERT INTO likes (photo_id,url) VALUES ({},'{}');".format(id,url))
 
 
 def checkLast():
