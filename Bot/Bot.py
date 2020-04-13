@@ -38,7 +38,7 @@ lastest = {}
 likes = []
 urls = []
 users = []
-texts_like=['Ржака нах!','Ржака ебать!','Нормальный хуй!', 'Ору!']
+texts_like=['Ржака нах!','Ржака ебать!','Нормальный\nхуй!', 'Ору!']
 
 
 def GetLikeButton(photo_id):
@@ -90,16 +90,21 @@ def like(update, context):
     global likes
     chat_id = update.effective_chat.id
     query = update.callback_query
-    query.answer()
-    query.edit_message_reply_markup(reply_markup=None)
-    id = int(query.data)
-    for l in likes:
-        if int(l[0]) == id:
-            l[1] += 1
-            VK.updateLikes(id, l[1])
-            context.bot.send_message(chat_id=chat_id, text=str(l[1]) + emojize(':thumbs_up:'))
-            break
-    logger.info('User %s liked photo with id %s' % (chat_id, id))
+    if query.data == 'wholikes':
+        query.answer(text='In developing...', show_alert=True)
+    else:
+        query.answer()
+        id = int(query.data)
+        for l in likes:
+            if int(l[0]) == id:
+                l[1] += 1
+                VK.updateLikes(id, l[1])
+                layout = GetLikeButton(id)
+                layout[0][0] = InlineKeyboardButton(text=str(l[1]) + emojize(':thumbs_up:'),callback_data='wholikes')
+                markup = InlineKeyboardMarkup(layout)
+                query.edit_message_reply_markup(reply_markup=markup)
+                break
+        logger.info('User %s liked photo with id %s' % (chat_id, id))
 
 
 def send_lastph(update, context):
