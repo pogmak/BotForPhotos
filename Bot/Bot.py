@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
+from telegram.utils.promise import Promise
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler, MessageQueue
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, Bot
 import logging
 import VK
 import emoji
@@ -38,12 +39,34 @@ users = []
 texts_like=['Ржака нах!','Ржака ебать!','Нормальный хуй!', 'Ору!']
 
 
+class MQBot(Bot):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._message_queue = MessageQueue(
+            all_burst_limit=30,
+            all_time_limit_ms=1000
+        )
+
+    def __del__(self):
+        try:
+            self._message_queue.stop()
+        finally:
+            super().__del__()
+
+    def send_message(self, *args, **kwargs):
+        is_group = kwargs.get('chat_id', 0) >= 0
+        return self._message_queue(Promise(super().send_message, args, kwargs), is_group)
+
+
 def start(update, context):
     chat_id = update.effective_chat.id
     if not chat_id in users:
+        welcome_text = "Приветствуем нового сюсюкена:" + update.effective_chat.username + emoji.emojize(':green_heart:')
+        for user in users:
+            context.bot.send_message(chat_id=user, text=welcome_text)
         users.append(chat_id)
         VK.adduserstodb(chat_id)
-        logger.info('Add new user:', str(chat_id))
+        logger.info('Add new user:%s' % chat_id)
     lastest[chat_id] = -1
     menu = ReplyKeyboardMarkup.from_row(buttons)
     wait_job = context.job_queue.run_repeating(newSavedUpdater,10,context=chat_id)
@@ -135,7 +158,8 @@ if __name__ == '__main__':
     users = VK.loadUsersfromdb()
     logger.info('Database succesefull load')
 
-    updater = Updater(TOKEN, use_context=True)
+    bot = MQBot(token=TOKEN)
+    updater = Updater(bot=bot, use_context=True)
     job = updater.job_queue
     job.run_repeating(callback=newSavedUpdater,interval=60)
     dispatcher = updater.dispatcher
