@@ -38,7 +38,8 @@ lastest = {}
 likes = {}
 urls = []
 users = {}
-texts_like=['Ржака нах!','Ржака ебать!','Нормальный хуй!', 'Ору!']
+texts_like=['Ржака!','Зачот!','Нормальный хуй!', 'Ору!']
+admins = ['@pogmak']
 
 
 def GetLikeButton(photo_id):
@@ -78,6 +79,10 @@ class MQBot(Bot):
         is_group = kwargs.get('chat_id', 0) >= 0
         return self._message_queue(Promise(super().send_message, args, kwargs), is_group)
 
+    def send_photo(self, *args, **kwargs):
+        is_group = kwargs.get('chat_id', 0) >= 0
+        return self._message_queue(Promise(super().send_photo, args, kwargs), is_group)
+
 
 def start(update, context):
     chat_id = update.effective_chat.id
@@ -104,7 +109,7 @@ def like(update, context):
     data = query.data
     if data.split('|')[0] == 'who':
         id = int(data.split('|')[1])
-        message = "WHO LIKES:\n"+'\n'.join(users[x] for x in likes[id])
+        message = '\n'.join(users[x] for x in likes[id])
         query.answer(text=message, show_alert=True)
     else:
         query.answer()
@@ -155,18 +160,17 @@ def newSavedUpdater(context):
     if not id in ids:
         likes[id] = []
         urls.append((id,url))
-        likes_button = InlineKeyboardMarkup(GetLikeButton(id))
+        likes_button = GetLikeButton(id)
         for user in list(users.keys()):
             context.bot.send_message(user,text='Новая сохраненка %s' % emojize(':fire::fire::fire:', use_aliases=True))
-            context.bot.send_photo(user, photo=url, reply_markup=likes_button)
+            context.bot.send_photo(user, photo=url, reply_markup=likes_button, timeout=60)
         VK.addPhotoToDB(id,url)
         logger.info('New photo with id %i has been sent to all users' % id)
 
 
 def send_toall(update, context):
-    message = ' '.join(context.args)
     for user in list(users.keys()):
-        context.bot.send_message(user, text=emojize(message, use_aliases=True))
+        context.bot.send_message(user, text=update.message.text)
     logger.info('Message to all has been sent')
 
 
@@ -200,6 +204,7 @@ if __name__ == '__main__':
     dispatcher = updater.dispatcher
     dispatcher.add_handler(CommandHandler('start', start))
     dispatcher.add_handler(CommandHandler('secrettoall', send_toall))
+    dispatcher.add_handler(MessageHandler(Filters.chat(username=admins), send_toall))
     dispatcher.add_handler(MessageHandler(Filters.text(buttons), HandlerButtons))
     dispatcher.add_handler(CallbackQueryHandler(like))
     updater.start_polling(timeout=123)
