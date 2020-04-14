@@ -111,6 +111,7 @@ def like(update, context):
         id = int(data.split('|')[1])
         message = '\n'.join(users[x] for x in likes[id])
         query.answer(text=message, show_alert=True)
+        query.edit_message_reply_markup(reply_markup=GetAnotherButtons(id))
     else:
         query.answer()
         id = int(data)
@@ -169,9 +170,10 @@ def newSavedUpdater(context):
 
 
 def send_toall(update, context):
-    for user in list(users.keys()):
-        context.bot.send_message(user, text=update.message.text)
-    logger.info('Message to all has been sent')
+    if not update.message.text in buttons:
+        for user in list(users.keys()):
+            context.bot.send_message(user, text=update.message.text)
+            logger.info('Message to all has been sent')
 
 
 
@@ -203,9 +205,8 @@ if __name__ == '__main__':
     job.run_repeating(callback=newSavedUpdater,interval=60)
     dispatcher = updater.dispatcher
     dispatcher.add_handler(CommandHandler('start', start))
-    dispatcher.add_handler(CommandHandler('secrettoall', send_toall))
-    dispatcher.add_handler(MessageHandler(Filters.chat(username=admins), send_toall))
     dispatcher.add_handler(MessageHandler(Filters.text(buttons), HandlerButtons))
+    dispatcher.add_handler(MessageHandler(Filters.chat(username=admins), send_toall))
     dispatcher.add_handler(CallbackQueryHandler(like))
     updater.start_polling(timeout=123)
 

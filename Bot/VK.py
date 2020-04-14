@@ -37,7 +37,7 @@ def loadfromdb():
     result = []
     with psycopg2.connect(dbname=dbname, user=dbuser, password=dbpassword, host="127.0.0.1", port="5432") as conn:
         with conn.cursor() as cursor:
-            query_get = "SELECT photo_id, url, wholikes FROM likes ORDER BY id;"
+            query_get = "SELECT photo_id, url, wholikes FROM likes ORDER BY photo_id;"
             cursor.execute(query_get)
             for row in cursor.fetchall():
                 result.append(row)
@@ -102,8 +102,8 @@ def adduserstodb(chatid,username):
         with conn.cursor() as cursor:
             cursor.execute("SELECT * FROM users WHERE chatid='{}';".format(chatid))
             if not cursor.fetchall():
-            	query_insert = "INSERT INTO users (chatid,username) VALUES ({},{});".format(chatid,username)
-            	cursor.execute(query_insert)
+                query_insert = "INSERT INTO users (chatid,username) VALUES ('{}','{}');".format(chatid,username)
+                cursor.execute(query_insert)
 
 
 def addPhotoToDB(id, url):
