@@ -11,7 +11,7 @@ dbname = 'bot'
 dbuser = 'bot'
 dbpassword = 'password'
 
-vk_session = vk_api.VkApi('+79991399680', 'makpog9814')
+vk_session = vk_api.VkApi('+79991399680', os.getenv('vkpass'))
 vk_session.auth()
 
 vk = vk_session.get_api()

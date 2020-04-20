@@ -25,7 +25,7 @@ logger.addHandler(eh)
 logger.addHandler(ch)
 
 vk_id = '255798202'
-TOKEN='1113990897:AAFCbjSkaHIlUgZY8itWm42hErADkpo8dwo'
+TOKEN=os.getenv('TOKEN')
 
 #REQUEST_KWARGS={
 #    'proxy_url': 'socks5://96.96.33.133:1080',
