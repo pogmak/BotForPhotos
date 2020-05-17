@@ -24,6 +24,8 @@ ch.setFormatter(formatter)
 logger.addHandler(eh)
 logger.addHandler(ch)
 
+#IP адрес необходим для джанги
+domain = '51.83.165.136'
 vk_id = '255798202'
 TOKEN=os.getenv('TOKEN')
 
@@ -31,32 +33,38 @@ TOKEN=os.getenv('TOKEN')
 #    'proxy_url': 'socks5://96.96.33.133:1080',
 #}
 
-
+#Статичные кнопки
 buttons = ['Случайно','Листать последние']
 
 lastest = {}
 likes = {}
 urls = []
 users = {}
+#Текст на кнопках лайков
 texts_like=['Ржака!','Зачот!','Нормальный хуй!', 'Ору!']
+#Список администраторов
 admins = ['@pogmak']
 
 
 def GetLikeButton(photo_id):
     vk_url = 'https://vk.com/photo%s_%s' % (vk_id,photo_id)
+    django_url = "{}/img/{}".format(domain,photo_id)
     layout = [
         [InlineKeyboardButton(random.choice(texts_like) + emojize(':thumbs_up:'), callback_data=photo_id),
-         InlineKeyboardButton(text='VK',url=vk_url)]
+         InlineKeyboardButton(text='VK',url=vk_url)],
+        [InlineKeyboardButton(text='Комментировать', url=django_url)]
     ]
     return InlineKeyboardMarkup(layout)
 
 
 def GetAnotherButtons(photo_id):
     vk_url = 'https://vk.com/photo%s_%s' % (vk_id,photo_id)
+    django_url = "{}/img/{}".format(domain, photo_id)
     callback = 'who|%s' % photo_id
     layout = [
         [InlineKeyboardButton(text=str(len(likes[photo_id])) + emojize(':thumbs_up:'),callback_data=callback),
-         InlineKeyboardButton(text='VK',url=vk_url)]
+         InlineKeyboardButton(text='VK',url=vk_url)],
+        [InlineKeyboardButton(text='Комментировать', url=django_url)]
     ]
     return InlineKeyboardMarkup(layout)
 
